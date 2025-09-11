@@ -1,5 +1,5 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
-<div class="widget" id="widget-<?php echo create_widget_id(); ?>" data-name="Stock Manager">
+<!--<div class="widget" id="widget-<?php echo create_widget_id(); ?>" data-name="Stock Manager">
     <div class="widget-dragger"></div>
     <div class="panel_s">
         <div class="panel-body">
@@ -61,5 +61,5 @@
             </div>
         </div>
     </div>
-</div>
+</div>-->
 

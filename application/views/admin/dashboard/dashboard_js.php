@@ -529,7 +529,53 @@ function loadStockData() {
 <script>
 $(document).ready(function() {
     loadItemGroupsStock();
+    loadOpenProposalsStock();
+    loadPaidInvoiceItemsStock();
 });
+
+function loadOpenProposalsStock() {
+    $.post(admin_url + 'dashboard/open_proposals_stock_data', function(response) {
+        var data = JSON.parse(response);
+        var html = '';
+        
+        if (data.length > 0) {
+            data.forEach(function(item) {
+                html += '<tr>';
+                html += '<td>' + item.description + '</td>';
+                html += '<td>' + (item.stock_in || '0') + '</td>';
+                html += '<td>' + item.proposal_qty + '</td>';
+                html += '<td>' + (item.group_name || 'No Group') + '</td>';
+                html += '</tr>';
+            });
+        } else {
+            html = '<tr><td colspan="4" class="text-center text-muted">No open proposal items found</td></tr>';
+        }
+        
+        $('#open_proposals_table').html(html);
+    });
+}
+
+function loadPaidInvoiceItemsStock() {
+    $.post(admin_url + 'dashboard/paid_invoice_items_stock_data', function(response) {
+        var data = JSON.parse(response);
+        var html = '';
+        
+        if (data.length > 0) {
+            data.forEach(function(item) {
+                html += '<tr>';
+                html += '<td>' + item.description + '</td>';
+                html += '<td>' + (item.stock_in || '0') + '</td>';
+                html += '<td>' + item.sold_qty + '</td>';
+                html += '<td>' + (item.group_name || 'No Group') + '</td>';
+                html += '</tr>';
+            });
+        } else {
+            html = '<tr><td colspan="4" class="text-center text-muted">No paid invoice items found</td></tr>';
+        }
+        
+        $('#paid_invoice_items_table').html(html);
+    });
+}
 
 function loadItemGroupsStock() {
     $.post(admin_url + 'dashboard/item_groups_stock_data', {}, function(response) {

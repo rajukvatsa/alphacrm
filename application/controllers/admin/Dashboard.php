@@ -157,4 +157,22 @@ class Dashboard extends AdminController
         }
     }
 
+    public function open_proposals_stock_data()
+    {
+        if ($this->input->is_ajax_request()) {
+            $data = $this->dashboard_model->get_open_proposals_stock_data();
+            echo json_encode($data);
+            exit();
+        }
+    }
+
+    public function paid_invoice_items_stock_data()
+    {
+        if ($this->input->is_ajax_request()) {
+            $data = $this->dashboard_model->get_paid_invoice_items_stock_data();
+            echo json_encode($data);
+            exit();
+        }
+    }
+
 }

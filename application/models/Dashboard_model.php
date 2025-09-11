@@ -543,4 +543,34 @@ class Dashboard_model extends App_Model
         
         return $groups;
     }
+
+    public function get_open_proposals_stock_data()
+    {
+        $this->db->select('ib.description, i.stock_in, SUM(ib.qty) as proposal_qty, ig.name as group_name');
+        $this->db->from(db_prefix() . 'proposals p');
+        $this->db->join(db_prefix() . 'itemable ib', 'ib.rel_id = p.id AND ib.rel_type = "proposal"');
+        $this->db->join(db_prefix() . 'items i', "i.description = LTRIM(SUBSTR(ib.description, INSTR(ib.description, '_') + 1))", 'left');
+        $this->db->join(db_prefix() . 'items_groups ig', 'ig.id = i.group_id', 'left');
+        $this->db->where_in('p.status', [1, 4]); // Open and Revised status
+        $this->db->where('MONTH(p.date)', date('n'));
+        $this->db->where('YEAR(p.date)', date('Y'));
+        $this->db->group_by('ib.description');
+        $this->db->order_by('ib.description', 'ASC');
+        return $this->db->get()->result_array();
+    }
+
+    public function get_paid_invoice_items_stock_data()
+    {
+        $this->db->select('ib.description, i.stock_in, SUM(ib.qty) as sold_qty, ig.name as group_name');
+        $this->db->from(db_prefix() . 'invoices inv');
+        $this->db->join(db_prefix() . 'itemable ib', 'ib.rel_id = inv.id AND ib.rel_type = "invoice"');
+         $this->db->join(db_prefix() . 'items i', "i.description = LTRIM(SUBSTR(ib.description, INSTR(ib.description, '_') + 1))", 'left');
+        $this->db->join(db_prefix() . 'items_groups ig', 'ig.id = i.group_id', 'left');
+        $this->db->where('inv.status', 2); // Paid status
+        $this->db->where('MONTH(inv.date)', date('n'));
+        $this->db->where('YEAR(inv.date)', date('Y'));
+        $this->db->group_by('ib.description');
+        $this->db->order_by('ib.description', 'ASC');
+        return $this->db->get()->result_array();
+    }
 }
