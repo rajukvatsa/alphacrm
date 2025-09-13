@@ -64,7 +64,7 @@ $(function() {
         "<div class=\"tw-flex tw-space-x-4 tw-items-center\"><h4 class='tw-font-medium tw-text-neutral-600 tw-text-lg'><i class='fa-regular fa-circle-question' data-toggle='tooltip' data-placement=\"bottom\" data-title=\"<?php echo _l('widgets_visibility_help_text'); ?>\"></i> <?php echo _l('widgets'); ?></h4><a href=\"<?php echo admin_url('staff/reset_dashboard'); ?>\" class=\"tw-text-sm\"><?php echo _l('reset_dashboard'); ?></a>";
 
     widgetsOptionsHTML +=
-        ' <a href=\"#\" id="viewWidgetableArea" class=\"tw-text-sm\"><?php echo _l('view_widgetable_area'); ?></a></div>';
+        ' <a href="#" id="viewWidgetableArea" class="tw-text-sm"><?php echo _l('view_widgetable_area'); ?></a></div>';
 
     $.each($widgets, function() {
         var widget = $(this);
@@ -536,44 +536,111 @@ $(document).ready(function() {
 function loadOpenProposalsStock() {
     $.post(admin_url + 'dashboard/open_proposals_stock_data', function(response) {
         var data = JSON.parse(response);
-        var html = '';
+        var tabsHtml = '';
+        var contentHtml = '';
+        var firstTab = true;
         
         if (data.length > 0) {
+            var groupedData = {};
             data.forEach(function(item) {
-                html += '<tr>';
-                html += '<td>' + item.description + '</td>';
-                html += '<td>' + (item.stock_in || '0') + '</td>';
-                html += '<td>' + item.proposal_qty + '</td>';
-                html += '<td>' + (item.group_name || 'No Group') + '</td>';
-                html += '</tr>';
+                var groupName = item.group_name || 'No Group';
+                if (!groupedData[groupName]) {
+                    groupedData[groupName] = [];
+                }
+                groupedData[groupName].push(item);
+            });
+            
+            Object.keys(groupedData).forEach(function(groupName) {
+                var items = groupedData[groupName];
+                var tabId = 'pending_group_' + groupName.replace(/\s+/g, '_').toLowerCase();
+                var activeClass = firstTab ? 'active' : '';
+                
+                tabsHtml += '<li class="' + activeClass + '">';
+                tabsHtml += '<a href="#' + tabId + '" data-toggle="tab">' + groupName + '</a>';
+                tabsHtml += '</li>';
+                
+                contentHtml += '<div class="tab-pane ' + activeClass + '" id="' + tabId + '">';
+                contentHtml += '<div class="table-responsive mtop15">';
+                contentHtml += '<table class="table table-striped">';
+                contentHtml += '<thead><tr><th>Item Description</th><th>Proforma Qty</th></tr></thead>';
+                contentHtml += '<tbody>';
+                
+                items.forEach(function(item) {
+                    contentHtml += '<tr>';
+                    contentHtml += '<td>' + item.description + '</td>';
+                    //contentHtml += '<td>' + (item.stock_in || '0') + '</td>';
+                    contentHtml += '<td>' + Number(item.proposal_qty) + '</td>';
+                    contentHtml += '</tr>';
+                });
+                
+                contentHtml += '</tbody></table></div></div>';
+                firstTab = false;
             });
         } else {
-            html = '<tr><td colspan="4" class="text-center text-muted">No open proposal items found</td></tr>';
+            tabsHtml = '<li class="active"><a href="#no_pending_items" data-toggle="tab">No Items</a></li>';
+            contentHtml = '<div class="tab-pane active" id="no_pending_items"><p class="text-center text-muted mtop15">No pending items found</p></div>';
         }
         
-        $('#open_proposals_table').html(html);
+        $('#pending_items_tabs').html(tabsHtml);
+        $('#pending_items_tab_content').html(contentHtml);
     });
 }
 
 function loadPaidInvoiceItemsStock() {
     $.post(admin_url + 'dashboard/paid_invoice_items_stock_data', function(response) {
         var data = JSON.parse(response);
-        var html = '';
+        var tabsHtml = '';
+        var contentHtml = '';
+        var firstTab = true;
         
         if (data.length > 0) {
+            var groupedData = {};
+            
             data.forEach(function(item) {
-                html += '<tr>';
-                html += '<td>' + item.description + '</td>';
-                html += '<td>' + (item.stock_in || '0') + '</td>';
-                html += '<td>' + item.sold_qty + '</td>';
-                html += '<td>' + (item.group_name || 'No Group') + '</td>';
-                html += '</tr>';
+                var groupName = item.group_name || 'No Group';
+                if (!groupedData[groupName]) {
+                    groupedData[groupName] = [];
+                }
+                groupedData[groupName].push(item);
+            });
+            
+            Object.keys(groupedData).forEach(function(groupName) {
+                var totalSoldQty = 0;
+                
+                var items = groupedData[groupName];
+                var tabId = 'paid_group_' + groupName.replace(/\s+/g, '_').toLowerCase();
+                var activeClass = firstTab ? 'active' : '';
+                
+                tabsHtml += '<li class="' + activeClass + '">';
+                tabsHtml += '<a href="#' + tabId + '" data-toggle="tab">' + groupName + '</a>';
+                tabsHtml += '</li>';
+                
+                contentHtml += '<div class="tab-pane ' + activeClass + '" id="' + tabId + '">';
+                contentHtml += '<div class="table-responsive mtop15">';
+                contentHtml += '<table class="table table-striped">';
+                contentHtml += '<thead><tr><th>Item Description</th><th>Sold Qty</th></tr></thead>';
+                contentHtml += '<tbody>';
+                
+                items.forEach(function(item) {
+                     totalSoldQty += Number(item.sold_qty);
+                    contentHtml += '<tr>';
+                    contentHtml += '<td>' + item.description + '</td>';
+                   // contentHtml += '<td>' + (item.stock_in || '0') + '</td>';
+                    contentHtml += '<td>' + Number(item.sold_qty )+ '</td>';
+                    contentHtml += '</tr>';
+                });
+                contentHtml += '<tr class="total-row success"><td>Total</td><td>'+totalSoldQty+'</td></tr>';
+                
+                contentHtml += '</tbody></table></div></div>';
+                firstTab = false;
             });
         } else {
-            html = '<tr><td colspan="4" class="text-center text-muted">No paid invoice items found</td></tr>';
+            tabsHtml = '<li class="active"><a href="#no_paid_items" data-toggle="tab">No Items</a></li>';
+            contentHtml = '<div class="tab-pane active" id="no_paid_items"><p class="text-center text-muted mtop15">No paid invoice items found</p></div>';
         }
         
-        $('#paid_invoice_items_table').html(html);
+        $('#paid_items_tabs').html(tabsHtml);
+        $('#paid_items_tab_content').html(contentHtml);
     });
 }
 
@@ -602,7 +669,7 @@ function loadItemGroupsStock() {
                 contentHtml += '<div class="tab-pane ' + activeClass + '" id="' + tabId + '">';
                 contentHtml += '<div class="table-responsive mtop15">';
                 contentHtml += '<table class="table table-striped">';
-                contentHtml += '<thead><tr><th>Item Description</th><th>Current Stock</th><th>Pending Stock</th><th>Sold Stock</th></tr></thead>';
+                contentHtml += '<thead><tr><th>Item Description</th></tr></thead>';
                 contentHtml += '<tbody>';
                 
                 if (group.items.length > 0) {
@@ -610,8 +677,8 @@ function loadItemGroupsStock() {
                         contentHtml += '<tr>';
                         contentHtml += '<td>' + item.description + '</td>';
                         contentHtml += '<td>' + (item.stock_in || '0') + '</td>';
-                        contentHtml += '<td>' + (item.stock_in || '0') + '</td>';
-                        contentHtml += '<td>' + (item.stock_in || '0') + '</td>';
+                      //  contentHtml += '<td>' + (item.stock_in || '0') + '</td>';
+                      //  contentHtml += '<td>' + (item.stock_in || '0') + '</td>';
                         contentHtml += '</tr>';
                         currentStockTotal += parseFloat(item.stock_in || 0);
                       
