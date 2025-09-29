@@ -73,5 +73,9 @@
 		<?php render_yes_no_option('rtl_support_client','settings_rtl_support_client'); ?>
 		<hr />
 		<?php echo render_input('settings[allowed_files]','settings_allowed_upload_file_types',get_option('allowed_files')); ?>
+		<hr />
+		<?php echo render_input('settings[orderemailfrom]', 'Order Email From', get_option('orderemailfrom'), 'email'); ?>
+		<hr />
+		<?php echo render_input('settings[clientdeliveryto]', 'Client Delivery To', get_option('clientdeliveryto'), 'email'); ?>
 	</div>
 </div>

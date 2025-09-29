@@ -1539,8 +1539,36 @@ class Purchase_model extends App_Model
         $this->db->where('id',$id);
         $this->db->update(db_prefix().'pur_orders',['approve_status' => $status]);
         if($this->db->affected_rows() > 0){
+            
+            // Update stock when purchase order is approved (status = 2)
+            if($status == 2){
+                $this->update_stock_on_approval($id);
+            }
 
             hooks()->apply_filters('create_goods_receipt',['status' => $status,'id' => $id]);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Update stock when purchase order is approved
+     *
+     * @param      <type>   $pur_order_id  The purchase order identifier
+     *
+     * @return     boolean
+     */
+    public function update_stock_on_approval($pur_order_id){
+        // Get purchase order details
+        $order_details = $this->get_pur_order_detail($pur_order_id);
+        
+        if(count($order_details) > 0){
+            foreach($order_details as $detail){
+                // Update stock_in field for each item
+                $this->db->where('id', $detail['item_code']);
+                $this->db->set('stock_in', 'stock_in + ' . (int)$detail['quantity'], FALSE);
+                $this->db->update(db_prefix().'items');
+            }
             return true;
         }
         return false;

@@ -356,21 +356,21 @@ function loadPendingInvoices() {
                 html += '<thead><tr>';
                 html += '<th>Invoice #</th>';
                 html += '<th>Item Description</th>';
-                html += '<th>Quantity</th>';
-                html += '<th>Amount</th>';
+                html += '<th class="text-right">Quantity</th>';
+                html += '<th class="text-right">Amount</th>';
                 html += '</tr></thead><tbody>';
                 
                 var totalQty = 0;
                 var totalAmount = 0;
                 items.forEach(function(item) {
                     html += '<tr>';
-                    html += '<td>' + item.invoice_number + '</td>';
+                    html += '<td>' +item.prefix +item.invoice_number + '</td>';
                     html += '<td>' + item.description + '</td>';
                     html += '<td class="text-right">' +    Number(item.qty) + '</td>';
-                    html += '<td class="text-right">' + (item.rate || '0.00') + '</td>';
+                    html += '<td class="text-right">' + (item.qty*item.rate || '0.00') + '</td>';
                     html += '</tr>';
                     totalQty += parseFloat(item.qty);
-                    totalAmount += parseFloat(item.rate || 0);
+                    totalAmount += parseFloat(item.rate*item.qty || 0);
                 });
                 
                 html += '<tr class="total-row success">';
@@ -381,7 +381,7 @@ function loadPendingInvoices() {
                 html += '</tbody></table></div>';
             });
         } else {
-            html = '<p class="text-center text-muted">No pending invoices found</p>';
+            html = '<p class="text-center text-muted">No pending Invoices found</p>';
         }
         
         $('#pending-invoices-table').html(html);
@@ -437,7 +437,7 @@ function loadPaymentTotals() {
                 }
                 groupedByCurrency[currency].push(payment);
             });
-            
+            let haulage_typeArr={arranged_haulage:'Arranged Haulage',self_collection:'Self Collection'};
             // Display each currency group
             Object.keys(groupedByCurrency).forEach(function(currency) {
                 var payments = groupedByCurrency[currency];
@@ -448,10 +448,10 @@ function loadPaymentTotals() {
                 
                 payments.forEach(function(payment) {
                     html += '<tr>';
-                    html += '<td>' + payment.invoiceid + '</td>';
+                    html += '<td>' + payment.prefix+payment.invoice_number + '</td>';
                     html += '<td>' + payment.amount + '</td>';
                     html += '<td>' + (payment.haulage_cost || '-') + '</td>';
-                    html += '<td>' + (payment.haulage_type || '-') + '</td>';
+                    html += '<td>' + (haulage_typeArr[payment.haulage_type] || '-') + '</td>';
                     html += '<td>' + (payment.daterecorded || '-') + '</td>';
                     html += '</tr>';
                     
@@ -528,13 +528,26 @@ function loadStockData() {
 </script>
 <script>
 $(document).ready(function() {
+    // Initialize month filter to current month and bind change to reload all sections
+    var monthNames = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+    var currentMonth = monthNames[new Date().getMonth()];
+    $('#month_filter_all_sections').val(currentMonth);
+    if ($.fn.selectpicker) { $('#month_filter_all_sections').selectpicker('refresh'); }
+
     loadItemGroupsStock();
     loadOpenProposalsStock();
     loadPaidInvoiceItemsStock();
+
+    $('#month_filter_all_sections').on('change', function(){
+        loadItemGroupsStock();
+        loadOpenProposalsStock();
+        loadPaidInvoiceItemsStock();
+    });
 });
 
 function loadOpenProposalsStock() {
-    $.post(admin_url + 'dashboard/open_proposals_stock_data', function(response) {
+    var month = $('#month_filter_all_sections').val();
+    $.post(admin_url + 'dashboard/open_proposals_stock_data', {month: month}, function(response) {
         var data = JSON.parse(response);
         var tabsHtml = '';
         var contentHtml = '';
@@ -587,7 +600,8 @@ function loadOpenProposalsStock() {
 }
 
 function loadPaidInvoiceItemsStock() {
-    $.post(admin_url + 'dashboard/paid_invoice_items_stock_data', function(response) {
+    var month = $('#month_filter_all_sections').val();
+    $.post(admin_url + 'dashboard/paid_invoice_items_stock_data', {month: month}, function(response) {
         var data = JSON.parse(response);
         var tabsHtml = '';
         var contentHtml = '';
@@ -645,7 +659,8 @@ function loadPaidInvoiceItemsStock() {
 }
 
 function loadItemGroupsStock() {
-    $.post(admin_url + 'dashboard/item_groups_stock_data', {}, function(response) {
+    var month = $('#month_filter_all_sections').val();
+    $.post(admin_url + 'dashboard/item_groups_stock_data', {month: month}, function(response) {
         var data = JSON.parse(response);
         
         var tabsHtml = '';

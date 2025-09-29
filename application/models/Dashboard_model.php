@@ -411,11 +411,11 @@ class Dashboard_model extends App_Model
 
     public function get_pending_invoices_filtered($filter_type, $start_date, $end_date)
     {
-        $this->db->select('it.description, it.qty, i.number as invoice_number, it.rate, c.name as currency_name');
+        $this->db->select('it.description,i.prefix, it.qty, i.number as invoice_number, it.rate, c.name as currency_name');
         $this->db->from(db_prefix() . 'invoices i');
         $this->db->join(db_prefix() . 'itemable it', 'it.rel_id = i.id AND it.rel_type = "invoice"');
         $this->db->join(db_prefix() . 'currencies c', 'c.id = i.currency');
-        $this->db->where('i.status', 1);
+        $this->db->where_in('i.status', [1, 4]); // Include both pending (1) and overdue (4) invoices
         
         $months = [
             'january' => 1, 'february' => 2, 'march' => 3, 'april' => 4,
@@ -425,28 +425,24 @@ class Dashboard_model extends App_Model
         
         if ($filter_type === 'custom') {
             if (!empty($start_date)) {
-                $this->db->where('i.duedate >=', $start_date);
+                $this->db->where('i.date >=', $start_date);
             }
             if (!empty($end_date)) {
-                $this->db->where('i.duedate <=', $end_date);
+                $this->db->where('i.date <=', $end_date);
             }
         } elseif (isset($months[$filter_type])) {
-            $this->db->where('MONTH(i.duedate)', $months[$filter_type]);
-            $this->db->where('YEAR(i.duedate)', date('Y'));
-            // If selected month is the current month, show only future (including today) pending invoices
-            if ((int)$months[$filter_type] === (int)date('n')) {
-                $this->db->where('i.duedate >=', date('Y-m-d'));
-            }
+            $this->db->where('MONTH(i.date)', $months[$filter_type]);
+            $this->db->where('YEAR(i.date)', date('Y'));
         } else {
             switch ($filter_type) {
                 case 'this_week':
-                    $this->db->where('YEARWEEK(i.duedate, 1) = YEARWEEK(CURDATE(), 1)');
+                    $this->db->where('YEARWEEK(i.date, 1) = YEARWEEK(CURDATE(), 1)');
                     break;
                 case 'prev_week':
-                    $this->db->where('YEARWEEK(i.duedate, 1) = YEARWEEK(DATE_SUB(CURDATE(), INTERVAL 1 WEEK), 1)');
+                    $this->db->where('YEARWEEK(i.date, 1) = YEARWEEK(DATE_SUB(CURDATE(), INTERVAL 1 WEEK), 1)');
                     break;
                 case 'next_week':
-                    $this->db->where('YEARWEEK(i.duedate, 1) = YEARWEEK(DATE_ADD(CURDATE(), INTERVAL 1 WEEK), 1)');
+                    $this->db->where('YEARWEEK(i.date, 1) = YEARWEEK(DATE_ADD(CURDATE(), INTERVAL 1 WEEK), 1)');
                     break;
             }
         }
@@ -457,7 +453,7 @@ class Dashboard_model extends App_Model
 
     public function get_payment_totals($filter, $start_date = null, $end_date = null)
     {
-        $this->db->select('p.invoiceid, p.amount, p.haulage_cost, p.haulage_type, p.daterecorded, c.symbol as currency_name');
+        $this->db->select('p.invoiceid, i.number as invoice_number, ,i.prefix,p.amount, p.haulage_cost, p.haulage_type, p.daterecorded, c.symbol as currency_name');
         $this->db->from(db_prefix() . 'invoicepaymentrecords p');
         $this->db->join(db_prefix() . 'invoices i', 'i.id = p.invoiceid');
         $this->db->join(db_prefix() . 'currencies c', 'c.id = i.currency');
@@ -524,7 +520,7 @@ class Dashboard_model extends App_Model
         ];
     }
 
-    public function get_item_groups_stock_data()
+    public function get_item_groups_stock_data($month = null)
     {
         // Get all item groups
         $this->db->select('id, name');
@@ -544,7 +540,7 @@ class Dashboard_model extends App_Model
         return $groups;
     }
 
-    public function get_open_proposals_stock_data()
+    public function get_open_proposals_stock_data($month = null)
     {
         $this->db->select('ib.description, i.stock_in, SUM(ib.qty) as proposal_qty, ig.name as group_name');
         $this->db->from(db_prefix() . 'proposals p');
@@ -552,14 +548,26 @@ class Dashboard_model extends App_Model
         $this->db->join(db_prefix() . 'items i', "i.description = LTRIM(SUBSTR(ib.description, INSTR(ib.description, '_') + 1))", 'left');
         $this->db->join(db_prefix() . 'items_groups ig', 'ig.id = i.group_id', 'left');
         $this->db->where_in('p.status', [1, 4]); // Open and Revised status
-        $this->db->where('MONTH(p.date)', date('n'));
-        $this->db->where('YEAR(p.date)', date('Y'));
+
+        $months = [
+            'january' => 1, 'february' => 2, 'march' => 3, 'april' => 4,
+            'may' => 5, 'june' => 6, 'july' => 7, 'august' => 8,
+            'september' => 9, 'october' => 10, 'november' => 11, 'december' => 12
+        ];
+        if ($month && isset($months[$month])) {
+            $this->db->where('MONTH(p.date)', $months[$month]);
+            $this->db->where('YEAR(p.date)', date('Y'));
+        } else {
+            $this->db->where('MONTH(p.date)', date('n'));
+            $this->db->where('YEAR(p.date)', date('Y'));
+        }
+
         $this->db->group_by('ib.description');
         $this->db->order_by('ib.description', 'ASC');
         return $this->db->get()->result_array();
     }
 
-    public function get_paid_invoice_items_stock_data()
+    public function get_paid_invoice_items_stock_data($month = null)
     {
         $this->db->select('ib.description, i.stock_in, SUM(ib.qty) as sold_qty, ig.name as group_name');
         $this->db->from(db_prefix() . 'invoices inv');
@@ -567,8 +575,20 @@ class Dashboard_model extends App_Model
          $this->db->join(db_prefix() . 'items i', "i.description = LTRIM(SUBSTR(ib.description, INSTR(ib.description, '_') + 1))", 'left');
         $this->db->join(db_prefix() . 'items_groups ig', 'ig.id = i.group_id', 'left');
         $this->db->where('inv.status', 2); // Paid status
-        $this->db->where('MONTH(inv.date)', date('n'));
-        $this->db->where('YEAR(inv.date)', date('Y'));
+
+        $months = [
+            'january' => 1, 'february' => 2, 'march' => 3, 'april' => 4,
+            'may' => 5, 'june' => 6, 'july' => 7, 'august' => 8,
+            'september' => 9, 'october' => 10, 'november' => 11, 'december' => 12
+        ];
+        if ($month && isset($months[$month])) {
+            $this->db->where('MONTH(inv.date)', $months[$month]);
+            $this->db->where('YEAR(inv.date)', date('Y'));
+        } else {
+            $this->db->where('MONTH(inv.date)', date('n'));
+            $this->db->where('YEAR(inv.date)', date('Y'));
+        }
+
         $this->db->group_by('ib.description');
         $this->db->order_by('ib.description', 'ASC');
         return $this->db->get()->result_array();

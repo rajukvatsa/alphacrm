@@ -8,7 +8,7 @@
                     <div class="widget-dragger"></div>
                     <div class="row">
                         <div class="col-md-8">
-                            <h4 id="rajinvoices" class="no-margin">Pending invoices & Items</h4>
+                            <h4 id="rajinvoices" class="no-margin">Pending Invoices & Items</h4>
                         </div>
                         <div class="col-md-4 text-right">
                             <div class="row">

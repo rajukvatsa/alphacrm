@@ -1,8 +1,30 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <div class="widget" id="widget-<?php echo create_widget_id(); ?>" data-name="Item Groups Stock">
-    <div class="widget-dragger"></div>
     <div class="panel_s">
         <div class="panel-body">
+            <div class="widget-dragger"></div>
+            <div class="row mtop10">
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="month_filter_all_sections" class="control-label">Filter by Month</label>
+                        <select id="month_filter_all_sections" class="selectpicker" data-width="100%">
+                            <option value="january">January</option>
+                            <option value="february">February</option>
+                            <option value="march">March</option>
+                            <option value="april">April</option>
+                            <option value="may">May</option>
+                            <option value="june">June</option>
+                            <option value="july">July</option>
+                            <option value="august">August</option>
+                            <option value="september">September</option>
+                            <option value="october">October</option>
+                            <option value="november">November</option>
+                            <option value="december">December</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <div class="widget-header">
                 <h4>Current Stock</h4>
             </div>
@@ -20,7 +42,7 @@
             </div>
             <hr/>
             <div class="mtop20">
-                <h4>Pending Items Current Month</h4>
+                <h4>Pending Items(Open Proforma)</h4>
                 <div id="pending_items_content">
                     <ul class="nav nav-tabs" id="pending_items_tabs">
                         <li class="active"><a href="#pending_loading_tab" data-toggle="tab">Loading...</a></li>
@@ -36,7 +58,7 @@
             </div>
             <hr/>
             <div class="mtop20">
-                <h4>Paid Invoice Items Current Month</h4>
+                <h4>Paid Invoice Items </h4>
                 <div id="paid_items_content">
                     <ul class="nav nav-tabs" id="paid_items_tabs">
                         <li class="active"><a href="#paid_loading_tab" data-toggle="tab">Loading...</a></li>

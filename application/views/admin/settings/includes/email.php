@@ -203,6 +203,7 @@
         <?php echo render_input('settings[smtp_email]', 'settings_email', get_option('smtp_email'), 'text', [], [], 
             empty(get_option('smtp_email')) && in_array(get_option('email_protocol'),['microsoft','google']) ? 'has-error' : ''
         ); ?>
+        <?php echo render_input('settings[orderemailfrom]', 'Order Email From', get_option('orderemailfrom'), 'email'); ?>
         <div class="xoauth-hide smtp-fields<?php if (in_array(get_option('email_protocol'), ['mail', 'microsoft', 'google'])) {
             echo ' hide';
         } ?>">

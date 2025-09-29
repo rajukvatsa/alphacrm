@@ -13,7 +13,7 @@
                     <?php foreach ($_items as $item) { ?>
                     <option value="<?php echo e($item['id']); ?>"
                         data-subtext="<?php //echo strip_tags(mb_substr($item['long_description'], 0, 200)) . '...'; ?>">
-                        (<?php echo e(app_format_number($item['rate'])); ?>) <?php echo e($item['description']); ?><strong>(Available:<?php echo e($item['unit']); ?> Units)</strong></option>
+                        (<?php echo e(app_format_number($item['rate'])); ?>) <?php echo e($item['description']); ?><strong>(Available:<?php echo e($item['stock_in']); ?> Units)</strong></option>
                     <?php } ?>
                 </optgroup>
                 <?php } ?>

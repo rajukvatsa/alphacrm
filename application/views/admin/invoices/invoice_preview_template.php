@@ -310,6 +310,12 @@ if ($query->num_rows() > 0) {
                                     <?php hooks()->do_action('after_invoice_preview_more_menu'); ?>
                                 </ul>
                             </div>
+                            <?php if ($invoice->status == Invoices_model::STATUS_PAID) { ?>
+                            <a href="#" onclick="openDispatchModal(<?php echo e($invoice->id); ?>); return false;" class="mleft10 pull-right btn btn-info">
+                                <i class="fa fa-truck"></i> Order Picking WH</a>
+                            <a href="#" onclick="openPickupModal(<?php echo e($invoice->id); ?>); return false;" class="mleft10 pull-right btn btn-warning">
+                                <i class="fa fa-calendar"></i> Delivery to Transport</a>
+                            <?php } ?>
                             <?php if (staff_can('create',  'payments') && abs($invoice->total) > 0) { ?>
                             <a href="#" onclick="record_payment(<?php echo e($invoice->id); ?>); return false;" class="mleft10 pull-right btn btn-success<?php if ($invoice->status == Invoices_model::STATUS_PAID || $invoice->status == Invoices_model::STATUS_CANCELLED) {
                                echo ' disabled';
@@ -601,6 +607,97 @@ if ($query->num_rows() > 0) {
 <?php $this->load->view('admin/invoices/invoice_send_to_client'); ?>
 <?php $this->load->view('admin/credit_notes/apply_invoice_credits'); ?>
 <?php $this->load->view('admin/credit_notes/invoice_create_credit_note_confirm'); ?>
+<!-- Dispatch Schedule Modal -->
+<div class="modal fade" id="dispatchModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Order Picking WH</h4>
+            </div>
+            <div class="modal-body">
+                <form id="dispatchForm">
+                    <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+                    <input type="hidden" id="dispatch_invoice_id" name="invoice_id">
+                    <div class="form-group">
+                        <label>From Email:</label>
+                        <input type="email" class="form-control" name="from_email" value="<?php echo get_option('orderemailfrom'); ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label>To Email:[Can add more emails with coma seperated]</label>
+                        <input type="email" class="form-control" name="to_email" value="<?php echo get_option('clientdeliveryto'); ?>"  required>
+                    </div>
+                    <div class="form-group">
+                        <label>Order Type:</label>
+                        <select class="form-control" name="order_type" required>
+                            <option value="Pick Order">Pick Order</option>
+                            <option value="Self Collection">Self Collection</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Schedule Date:</label>
+                        <input type="date" class="form-control" name="schedule_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Schedule Time:</label>
+                        <input type="time" class="form-control" name="schedule_time" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Notes:</label>
+                        <textarea class="form-control" name="notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-info" onclick="sendDispatchEmail()">Send Email</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pickup Schedule Modal -->
+<div class="modal fade" id="pickupModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Delivery to Transport</h4>
+            </div>
+            <div class="modal-body">
+                <form id="pickupForm">
+                    <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+                    <input type="hidden" id="pickup_invoice_id" name="invoice_id">
+                    <div class="form-group">
+                        <label>From Email:</label>
+                        <input type="email" class="form-control" name="from_email"  value="<?php echo get_option('orderemailfrom'); ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label>To Email:</label>
+                        <input type="email" class="form-control" name="to_email"   required>
+                    </div>
+                    <div class="form-group">
+                        <label>Schedule Date:</label>
+                        <input type="date" class="form-control" name="schedule_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Schedule Time:</label>
+                        <input type="time" class="form-control" name="schedule_time" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Notes:</label>
+                        <textarea class="form-control" name="notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-warning" onclick="sendPickupEmail()">Send Email</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 init_items_sortable(true);
 init_btn_with_tooltips();
@@ -608,6 +705,59 @@ init_datepicker();
 init_selectpicker();
 init_form_reminder();
 init_tabs_scrollable();
+
+function openDispatchModal(invoiceId) {
+    $('#dispatch_invoice_id').val(invoiceId);
+    $('#dispatchModal').modal('show');
+}
+
+function openPickupModal(invoiceId) {
+    $('#pickup_invoice_id').val(invoiceId);
+    $('#pickupModal').modal('show');
+}
+
+function sendDispatchEmail() {
+    var formData = $('#dispatchForm').serialize();
+    $.ajax({
+        url: admin_url + 'invoices/send_dispatch_email',
+        type: 'POST',
+        data: formData,
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                alert_float('success', response.message);
+                $('#dispatchModal').modal('hide');
+            } else {
+                alert_float('danger', response.message);
+            }
+        },
+        error: function() {
+            alert_float('danger', 'An error occurred while sending the email.');
+        }
+    });
+}
+
+function sendPickupEmail() {
+    var formData = $('#pickupForm').serialize();
+    $.ajax({
+        url: admin_url + 'invoices/send_pickup_email',
+        type: 'POST',
+        data: formData,
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                alert_float('success', response.message);
+                $('#pickupModal').modal('hide');
+            } else {
+                alert_float('danger', response.message);
+            }
+        },
+        error: function() {
+            alert_float('danger', 'An error occurred while sending the email.');
+        }
+    });
+}
+
 <?php if ($record_payment) { ?>
 record_payment(<?php echo e($invoice->id); ?>);
 <?php } elseif ($send_later) { ?>

@@ -101,9 +101,9 @@ class Proposal_pdf extends App_pdf
         $pageWidth  = $this->getPageWidth();
         $pageHeight = $this->getPageHeight();
         $this->StartTransform();
-        $this->Rotate(45, $pageWidth / 2, $pageHeight / 2);
+        $this->Rotate(65, $pageWidth / 2, $pageHeight / 2);
         $this->SetXY(0, $pageHeight / 2 - 10);
-        $this->Cell($pageWidth, 10, mb_strtoupper($text, 'UTF-8'), 0, 0, 'C');
+        $this->Cell($pageWidth, -100, mb_strtoupper($text, 'UTF-8'), 0, 0, 'C');
         $this->StopTransform();
 
         // Restore defaults

@@ -536,15 +536,36 @@ class Invoices extends AdminController
       
         if ($this->input->post()) {
             $this->load->model('payments_model');
+            $invoice_id = $this->input->post('invoiceid');
+             
             $id = $this->payments_model->process_payment($this->input->post(), '');
             
             if ($id) {
+                // Decrease item stocks when payment is recorded
+                $this->decrease_invoice_item_stocks($invoice_id);
+                
                 set_alert('success', _l('invoice_payment_recorded'));
                 redirect(admin_url('payments/payment/' . $id));
             } else {
                 set_alert('danger', _l('invoice_payment_record_failed'));
             }
-            redirect(admin_url('invoices/list_invoices/' . $this->input->post('invoiceid')));
+            redirect(admin_url('invoices/list_invoices/' . $invoice_id));
+        }
+    }
+    
+    private function decrease_invoice_item_stocks($invoice_id)
+    {
+        $invoice = $this->invoices_model->get($invoice_id);
+       
+        if ($invoice && $invoice->items) {
+            foreach ($invoice->items as $item) {
+                if (!empty($item['rel_id'])) {
+                    $this->db->where('description', $item['description']);
+                    $this->db->set('stock_in', 'stock_in - ' . (int)$item['qty'], FALSE);
+                    $this->db->update(db_prefix() . 'items');
+                }
+               
+            }
         }
     }
 
@@ -770,5 +791,156 @@ class Invoices extends AdminController
                 echo $duedate;
             }
         }
+    }
+
+    public function send_dispatch_email()
+    {
+        if ($this->input->is_ajax_request() && $this->input->post()) {
+            $invoice_id = $this->input->post('invoice_id');
+            $from_email = $this->input->post('from_email');
+            $to_email = $this->input->post('to_email');
+            $order_type = $this->input->post('order_type');
+            $schedule_date = $this->input->post('schedule_date');
+            $schedule_time = $this->input->post('schedule_time');
+            $notes = $this->input->post('notes');
+            
+            $invoice = $this->invoices_model->get($invoice_id);
+            if (!$invoice) {
+                echo json_encode(['success' => false, 'message' => 'Invoice not found']);
+                return;
+            }
+            
+            $this->db->where('slug', 'dispatch-schedule');
+            $template = $this->db->get(db_prefix() . 'emailtemplates')->row();
+            
+            if ($template) {
+                $this->load->model('clients_model');
+                $client = $this->clients_model->get($invoice->clientid);
+                
+                $merge_fields = [
+                    '{invoice_number}' => format_invoice_number($invoice->id),
+                    '{order_type}' => $order_type,
+                    '{schedule_date}' => $schedule_date,
+                    '{schedule_time}' => $schedule_time,
+                    '{dispatch_date}' => $schedule_date,
+                    '{pickup_time}' => $schedule_time,
+                    '{notes}' => $notes,
+                    '{client_company}' => $client->company,
+                    '{invoice_items}' => $this->get_invoice_items_text($invoice),
+                    '{invoice_total}' => app_format_money($invoice->total, $invoice->currency_name),
+                    '{companyname}' => get_option('companyname'),
+                    '{company_address}' => get_option('company_address'),
+                    '{shipping_street}' => $invoice->shipping_street,
+                    '{shipping_city}' => $invoice->shipping_city,
+                    '{shipping_state}' => $invoice->shipping_state,
+                    '{shipping_zip}' => $invoice->shipping_zip,
+                    '{shipping_country}' => get_country_short_name($invoice->shipping_country)
+                ];
+                
+                $subject = str_replace(array_keys($merge_fields), array_values($merge_fields), $template->subject);
+                $message = str_replace(array_keys($merge_fields), array_values($merge_fields), $template->message);
+                
+                $this->load->library('email');
+                $this->email->from(get_option('smtp_email'), get_option('companyname'));
+                $this->email->reply_to($from_email, get_option('companyname'));
+                $this->email->to($to_email);
+                $this->email->subject($subject);
+                $this->email->message($message);
+                
+                if ($this->email->send(true)) {
+                    echo json_encode(['success' => true, 'message' => 'Order Picking WH email sent successfully']);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Failed to send email']);
+                }
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Email template not found']);
+            }
+        }
+    }
+    
+    public function send_pickup_email()
+    {
+        if ($this->input->is_ajax_request() && $this->input->post()) {
+            $invoice_id = $this->input->post('invoice_id');
+            $from_email = $this->input->post('from_email');
+            $to_email = $this->input->post('to_email');
+            $schedule_date = $this->input->post('schedule_date');
+            $schedule_time = $this->input->post('schedule_time');
+            $notes = $this->input->post('notes');
+            
+            $invoice = $this->invoices_model->get($invoice_id);
+            if (!$invoice) {
+                echo json_encode(['success' => false, 'message' => 'Invoice not found']);
+                return;
+            }
+            
+            $this->db->where('slug', 'pickup-schedule');
+            $template = $this->db->get(db_prefix() . 'emailtemplates')->row();
+            
+            if ($template) {
+                $this->load->model('clients_model');
+                $client = $this->clients_model->get($invoice->clientid);
+                
+                $merge_fields = [
+                    '{invoice_number}' => format_invoice_number($invoice->id),
+                    '{schedule_date}' => $schedule_date,
+                    '{schedule_time}' => $schedule_time,
+                    '{pickup_date}' => $schedule_date,
+                    '{pickup_time}' => $schedule_time,
+                    '{notes}' => $notes,
+                    '{client_company}' => $client->company,
+                    '{invoice_items}' => $this->get_invoice_items_text($invoice),
+                    '{invoice_total}' => app_format_money($invoice->total, $invoice->currency_name),
+                    '{companyname}' => get_option('companyname'),
+                    '{company_address}' => get_option('company_address'),
+                    '{shipping_street}' => $invoice->shipping_street,
+                    '{shipping_city}' => $invoice->shipping_city,
+                    '{shipping_state}' => $invoice->shipping_state,
+                    '{shipping_zip}' => $invoice->shipping_zip,
+                    '{shipping_country}' => get_country_short_name($invoice->shipping_country)
+                ];
+                
+                $subject = str_replace(array_keys($merge_fields), array_values($merge_fields), $template->subject);
+                $message = str_replace(array_keys($merge_fields), array_values($merge_fields), $template->message);
+                
+                $this->load->library('email');
+                $this->email->from(get_option('smtp_email'), get_option('companyname'));
+                $this->email->reply_to($from_email, get_option('companyname'));
+                $this->email->to($to_email);
+                $this->email->subject($subject);
+                $this->email->message($message);
+                
+                if ($this->email->send(true)) {
+                    echo json_encode(['success' => true, 'message' => 'Delivery to Transport email sent successfully']);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Failed to send email']);
+                }
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Email template not found']);
+            }
+        }
+    }
+    
+    public function get_staff_list()
+    {
+        $staff = $this->staff_model->get('', ['active' => 1]);
+        echo json_encode($staff);
+    }
+    
+    public function get_customer_list($invoice_id)
+    {
+        $invoice = $this->invoices_model->get($invoice_id);
+        $this->load->model('clients_model');
+        $customers = $this->clients_model->get();
+        echo json_encode($customers);
+    }
+    
+    private function get_invoice_items_text($invoice)
+    {
+        $items_text = '';
+        foreach ($invoice->items as $item) {
+            $items_text .= $item['description'] . ' (Qty: ' . $item['qty'] . '), ';
+        }
+        return rtrim($items_text, ', ');
     }
 }

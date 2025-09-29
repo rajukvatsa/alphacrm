@@ -151,7 +151,8 @@ class Dashboard extends AdminController
     public function item_groups_stock_data()
     {
         if ($this->input->is_ajax_request()) {
-            $data = $this->dashboard_model->get_item_groups_stock_data();
+            $month = $this->input->post('month');
+            $data = $this->dashboard_model->get_item_groups_stock_data($month);
             echo json_encode($data);
             exit();
         }
@@ -160,7 +161,8 @@ class Dashboard extends AdminController
     public function open_proposals_stock_data()
     {
         if ($this->input->is_ajax_request()) {
-            $data = $this->dashboard_model->get_open_proposals_stock_data();
+            $month = $this->input->post('month');
+            $data = $this->dashboard_model->get_open_proposals_stock_data($month);
             echo json_encode($data);
             exit();
         }
@@ -169,7 +171,8 @@ class Dashboard extends AdminController
     public function paid_invoice_items_stock_data()
     {
         if ($this->input->is_ajax_request()) {
-            $data = $this->dashboard_model->get_paid_invoice_items_stock_data();
+            $month = $this->input->post('month');
+            $data = $this->dashboard_model->get_paid_invoice_items_stock_data($month);
             echo json_encode($data);
             exit();
         }
